@@ -1,0 +1,22 @@
+{
+  "configurations": [
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:Enhance}",
+      "name": "Debug Enhance",
+      "program": "${workspaceFolder:Enhance}/.build/debug/Enhance",
+      "preLaunchTask": "swift: Build Debug Enhance"
+    },
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:Enhance}",
+      "name": "Release Enhance",
+      "program": "${workspaceFolder:Enhance}/.build/release/Enhance",
+      "preLaunchTask": "swift: Build Release Enhance"
+    }
+  ]
+}
