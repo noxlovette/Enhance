@@ -3,6 +3,11 @@ import Foundation
 let regNames16 = ["ax", "cx", "dx", "bx", "sp", "bp", "si", "di"]
 let regNames8 = ["al", "cl", "dl", "bl", "ah", "ch", "dh", "bh"]
 
+// note: bp in position 7 is only valid with displacement, if mod == 00 it's 16 displacemenet, direct address
+let mod00 = [
+    "bx + si", "bx + di", "bp + si", "bp + di", "si", "di", "bp", "bx",
+]
+
 func readBinaryFile(url: String) -> [UInt8]? {
     let fileURL = URL(fileURLWithPath: url)
 
@@ -40,49 +45,104 @@ enum Direction {
     case rmToReg
 }
 
-/// Supported operations: add
+/// Supported operations: mov
 /// - Parameter bytes:
 func decode(_ bytes: [UInt8]) {
-
     var pc = 0
     while pc < bytes.count {
-        let opcode = bytes[pc]
+        let firstByte = bytes[pc]
         pc += 1
 
-        switch opcode {
-        case 0x89:  // literally: ok we are dealing with 16-bit mov!
-            let modrm = bytes[pc]
-            pc += 1  // we are looking at the next byte – who are the target and the source?
-            let mod = (modrm & 0b11000000) >> 6  // take two first bits – the mod part of the byte, move them all the way back to cleanup
-            let reg = (modrm & 0b00111000) >> 3  // same
-            let rm = (modrm & 0b00000111)
+        // Check for immediate to register first (1011 wxxx pattern)
+        let immToRegPattern = firstByte & 0b11110000  // Mask out last 4 bits
+        if immToRegPattern == 0b10110000 {
+            let is16Bit = (firstByte & 0b00001000) != 0  // w bit
+            let reg = firstByte & 0b00000111  // reg bits
+            let regNames = is16Bit ? regNames16 : regNames8
+            let regName = regNames[Int(reg)]
 
-            if mod == 0b11 {
-                let dest = regNames16[Int(rm)]
-                let src = regNames16[Int(reg)]
-                print("mov \(dest), \(src)")
+            if is16Bit {
+                let immediate = UInt16(bytes[pc]) | (UInt16(bytes[pc + 1]) << 8)
+                pc += 2
+                print("mov \(regName), \(immediate)")
             } else {
-                print("Memory addressing mode not implemented yet.")
+                let immediate = bytes[pc]
+                pc += 1
+                print("mov \(regName), \(immediate)")
             }
-        case 0x88:
-            let modrm = bytes[pc]
-            pc += 1
-            let mod = (modrm & 0b11000000) >> 6  // take two first bits – the mod part of the byte, move them all the way back to cleanup
-            let reg = (modrm & 0b00111000) >> 3  // same
-            let rm = (modrm & 0b00000111)
+        } else {
+            // Extract opcode (first 6 bits) for other instructions
+            let opcode = firstByte & 0b11111100
+            switch opcode {
+            case 0b10001000:  // MOV reg/mem to/from reg
+                let is16Bit = (firstByte & 0b00000001) != 0
+                let direction: Direction = (firstByte & 0b00000010) != 0 ? .rmToReg : .regToRm
+                let modrm = bytes[pc]
+                let mod = (modrm & 0b11000000) >> 6
+                let reg = (modrm & 0b00111000) >> 3
+                let rm = (modrm & 0b00000111)
+                let regNames = is16Bit ? regNames16 : regNames8
+                let regName = regNames[Int(reg)]
+                pc += 1
 
-            if mod == 0b11 {
-                let dest = regNames8[Int(rm)]
-                let src = regNames8[Int(reg)]
-                print("mov \(dest), \(src)")
-            } else {
-                print("Memory addressing mode not implemented yet.")
+                if mod == 0b11 {  // register mode (no displacement)
+                    let rmName = regNames[Int(rm)]
+                    switch direction {
+                    case .regToRm:
+                        print("mov \(rmName), \(regName)")
+                    case .rmToReg:
+                        print("mov \(regName), \(rmName)")
+                    }
+                } else if mod == 0b10 {  // 16-bit displacement
+                    let rmName = mod00[Int(rm)]
+                    // Fixed: proper parentheses for bit shifting
+                    let displacement = UInt16(bytes[pc]) | (UInt16(bytes[pc + 1]) << 8)
+                    pc += 2
+
+                    switch direction {
+                    case .regToRm:
+                        print("mov [\(rmName) + \(displacement)], \(regName)")
+                    case .rmToReg:
+                        print("mov \(regName), [\(rmName) + \(displacement)]")
+                    }
+                } else if mod == 0b01 {  // 8-bit displacement
+                    let rmName = mod00[Int(rm)]
+                    let displacement = bytes[pc]
+                    pc += 1
+
+                    switch direction {
+                    case .regToRm:
+                        print("mov [\(rmName) + \(displacement)], \(regName)")
+                    case .rmToReg:
+                        print("mov \(regName), [\(rmName) + \(displacement)]")
+                    }
+                } else if mod == 0b00 {  // memory, no displacement
+                    if rm == 0b110 {
+                        // Special case: direct address (16-bit immediate address)
+                        let address = UInt16(bytes[pc]) | (UInt16(bytes[pc + 1]) << 8)
+                        pc += 2
+                        switch direction {
+                        case .regToRm:
+                            print("mov [\(address)], \(regName)")
+                        case .rmToReg:
+                            print("mov \(regName), [\(address)]")
+                        }
+                    } else {
+                        let rmName = mod00[Int(rm)]
+                        switch direction {
+                        case .regToRm:
+                            print("mov [\(rmName)], \(regName)")
+                        case .rmToReg:
+                            print("mov \(regName), [\(rmName)]")
+                        }
+                    }
+                } else {
+                    print("Error decoding mod")
+                }
+            default:
+                print(String(format: "Unknown opcode: 0x%02X", firstByte))
+                return
             }
-
-        default:
-            print(String(format: "Unknown opcode: 0x%02X", opcode))
-            return
         }
-
     }
 }
