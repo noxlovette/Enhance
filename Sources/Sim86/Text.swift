@@ -40,7 +40,7 @@ func printInstruction(_ instruction: inout Instruction) {
                     print(isWide ? "word " : "byte ", terminator: "")
                 }
                 if flags.contains(.segment) {
-                    print("\(address.segment.getSegmentName()):", terminator: "")
+                    print("\(address.segment.getName(count: 0, offset: 2)):", terminator: "")
                 }
                 print("[\(address.base.expression)", terminator: "")
                 if address.displacement != 0 {

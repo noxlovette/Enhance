@@ -9,13 +9,16 @@ let MEMORY_ACCESS_MASK: u32 = 0xFFFFF
 // MARK: - Memory Model
 struct Memory {
     var bytes: [u8] = Array(repeating: 0, count: MEMORY_SIZE)
+    func readByte(at address: UInt32) -> UInt8 {
+        return bytes[Int(address)]
+    }
 }
 
 // MARK: - Segmented Addressing
 /// How memory is accessed in 8086. Take the base, shift by 4, apply offset
 struct SegmentedAccess {
     let segmentBase: u16
-    let segmentOffset: u16
+    var segmentOffset: u16
 }
 
 // MARK: - Address Calculation
