@@ -23,19 +23,16 @@ struct SegmentedAccess {
 
 // MARK: - Address Calculation
 /// way of getting whichever byte is there
-func getAbsoluteAddress(of segmentBase: u16, _ segmentOffset: u16, _ additionalOffset: u16 = 0)
-    -> u32
-{
-    let result =
-        ((u32(segmentBase) << 4) &+ u32(segmentOffset) &+ u32(additionalOffset))
-        & MEMORY_ACCESS_MASK
+func getAbsoluteAddress(of segmentBase: u16, _ segmentOffset: u16, _ additionalOffset: u16 = 0) -> u32 {
+    // First do the segment calculation: (segmentBase << 4) + (segmentOffset + additionalOffset)
+    // Then apply the memory mask
+    let result = (((u32(segmentBase) << 4) + u32(segmentOffset + additionalOffset)) & MEMORY_ACCESS_MASK)
     return result
 }
 
 func getAbsoluteAddress(of access: SegmentedAccess, _ additionalOffset: u16 = 0) -> u32 {
     return getAbsoluteAddress(of: access.segmentBase, access.segmentOffset, additionalOffset)
 }
-
 // MARK: - Memory Access
 /// Get the byte from memory
 /// - Parameters:
@@ -69,7 +66,10 @@ func loadMemory(fromFile fileName: String, into memory: inout Memory, atOffset: 
 
 func advanceSegmentedAddress(_ access: SegmentedAccess, by offset: u32) -> SegmentedAccess {
     let absolute = getAbsoluteAddress(of: access) + offset
-    let newSegment = u16(absolute >> 4)
-    let newOffset = u16(absolute & 0xF)
+    
+    // Normalize to standard form where offset < 65536
+    let newSegment = u16((absolute >> 4) & 0xFFFF)
+    let newOffset = u16(absolute & 0xFFFF)
+    
     return SegmentedAccess(segmentBase: newSegment, segmentOffset: newOffset)
 }

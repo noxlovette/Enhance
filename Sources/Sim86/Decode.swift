@@ -2,12 +2,12 @@ import Foundation
 
 // MARK: - Instruction Table
 struct InstructionDecoder {
-
+    
     // Helper function to create binary literal
     private static func B(_ value: UInt32, bitCount: UInt8) -> InstructionBits {
         return InstructionBits.literal(value, bitCount: bitCount)
     }
-
+    
     static let instructionFormats: [InstructionFormat] = [
         // MOV instructions
         InstructionFormat(.mov, [B(0b100010, bitCount: 6), .d, .w, .mod, .reg, .rm]),
@@ -34,19 +34,19 @@ struct InstructionDecoder {
                 B(0b100011, bitCount: 6), .d, B(0b0, bitCount: 1), .mod, B(0b0, bitCount: 1), .sr,
                 .rm,
             ]),
-
+        
         // PUSH instructions
         InstructionFormat(
             .push, [B(0b11111111, bitCount: 8), .mod, B(0b110, bitCount: 3), .rm, .impW(1)]),
         InstructionFormat(.push, [B(0b01010, bitCount: 5), .reg, .impW(1)]),
         InstructionFormat(.push, [B(0b000, bitCount: 3), .sr, B(0b110, bitCount: 3), .impW(1)]),
-
+        
         // POP instructions
         InstructionFormat(
             .pop, [B(0b10001111, bitCount: 8), .mod, B(0b000, bitCount: 3), .rm, .impW(1)]),
         InstructionFormat(.pop, [B(0b01011, bitCount: 5), .reg, .impW(1)]),
         InstructionFormat(.pop, [B(0b000, bitCount: 3), .sr, B(0b111, bitCount: 3), .impW(1)]),
-
+        
         // ADD instructions
         InstructionFormat(.add, [B(0b000000, bitCount: 6), .d, .w, .mod, .reg, .rm]),
         InstructionFormat(
@@ -54,7 +54,7 @@ struct InstructionDecoder {
             [B(0b100000, bitCount: 6), .s, .w, .mod, B(0b000, bitCount: 3), .rm, .data, .dataIfW]),
         InstructionFormat(
             .add, [B(0b0000010, bitCount: 7), .w, .data, .dataIfW, .impREG(0), .impD(1)]),
-
+        
         // SUB instructions
         InstructionFormat(.sub, [B(0b001010, bitCount: 6), .d, .w, .mod, .reg, .rm]),
         InstructionFormat(
@@ -62,7 +62,7 @@ struct InstructionDecoder {
             [B(0b100000, bitCount: 6), .s, .w, .mod, B(0b101, bitCount: 3), .rm, .data, .dataIfW]),
         InstructionFormat(
             .sub, [B(0b0010110, bitCount: 7), .w, .data, .dataIfW, .impREG(0), .impD(1)]),
-
+        
         // CMP instructions
         InstructionFormat(.cmp, [B(0b001110, bitCount: 6), .d, .w, .mod, .reg, .rm]),
         InstructionFormat(
@@ -70,11 +70,11 @@ struct InstructionDecoder {
             [B(0b100000, bitCount: 6), .s, .w, .mod, B(0b111, bitCount: 3), .rm, .data, .dataIfW]),
         InstructionFormat(
             .cmp, [B(0b0011110, bitCount: 7), .w, .data, .dataIfW, .impREG(0), .impD(1)]),
-
+        
         // Jump instructions
         InstructionFormat(.jmp, [B(0b11101001, bitCount: 8)] + InstructionBits.addr),
         InstructionFormat(.jmp, [B(0b11101011, bitCount: 8), .disp]),
-
+        
         // Conditional jumps
         InstructionFormat(.je, [B(0b01110100, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.jl, [B(0b01111100, bitCount: 8), .disp, .flags(.relJMPDisp)]),
@@ -86,14 +86,14 @@ struct InstructionDecoder {
         InstructionFormat(.jg, [B(0b01111111, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.jnb, [B(0b01110011, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.ja, [B(0b01110111, bitCount: 8), .disp, .flags(.relJMPDisp)]),
-
+        
         // Loop instructions
         InstructionFormat(.loop, [B(0b11100010, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.loopz, [B(0b11100001, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.loopnz, [B(0b11100000, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.jcxz, [B(0b11100011, bitCount: 8), .disp, .flags(.relJMPDisp)]),
     ]
-
+    
     // Register mapping table
     private static let regTable: [[(RegisterIndex, UInt8, UInt8)]] = [
         [(.a, 0, 1), (.a, 0, 2)],
@@ -109,13 +109,13 @@ struct InstructionDecoder {
     private static func getRegOperand(intelRegIndex: UInt32, wide: Bool) -> InstructionOperand {
         var operand = InstructionOperand(type: .none)
         operand.type = .register
-
+        
         let reg = regTable[Int(intelRegIndex & 0x7)][wide ? 1 : 0]
         operand.register = RegisterAccess(index: reg.0, offset: reg.1, count: reg.2)
-
+        
         return operand
     }
-
+    
     private static func parseDataValue(
         memory: Memory, access: inout SegmentedAccess, exists: Bool, wide: Bool,
         signExtended: Bool
@@ -126,25 +126,23 @@ struct InstructionDecoder {
                 let d0 = memory.readByte(at: getAbsoluteAddress(of: access))
                 let d1 = memory.readByte(at: getAbsoluteAddress(of: access))
                 result = (u32(d1) << 8) | u32(d0)
-                access.segmentOffset += 2
             } else {
                 result = u32(memory.readByte(at: getAbsoluteAddress(of: access)))
                 if signExtended {
                     result = u32(Int32(Int8(bitPattern: u8(result))))
                 }
                 access.segmentOffset += 1
-
             }
         }
 
         return result
     }
-
+    
     static func decodeInstruction(
         context: inout DisasmContext, memory: Memory, at: inout SegmentedAccess
     ) -> Instruction {
         var result = Instruction()
-
+        
         for format in instructionFormats {
             if let instruction = tryDecode(
                 context: &context, format: format, memory: memory, at: at)
@@ -156,12 +154,16 @@ struct InstructionDecoder {
         }
         return result
     }
-
+    
     private static func tryDecode(
         context: inout DisasmContext, format: InstructionFormat, memory: Memory,
         at originalAt: SegmentedAccess
     ) -> Instruction? {
         var instruction = Instruction()
+        
+        // Initialize operands array with enough elements
+        instruction.operands = Array(repeating: InstructionOperand(type: .none), count: 3)
+        
         var hasBits: u32 = 0
         var bits = Array(repeating: u32(0), count: Int(BitsUsage.count.rawValue))
         var valid = true
@@ -247,13 +249,13 @@ struct InstructionDecoder {
         let regOperandIndex = d ? 0 : 1
         let modOperandIndex = d ? 1 : 0
 
-        // Handle register operand
+        // Handle register operand - now safe because we pre-allocated the array
         if hasBits & (1 << BitsUsage.reg.rawValue) != 0 {
             instruction.operands[regOperandIndex] = getRegOperand(
                 intelRegIndex: bits[Int(BitsUsage.reg.rawValue)], wide: w != 0)
         }
 
-        // Handle mod operand
+        // Handle mod operand - now safe because we pre-allocated the array
         if hasBits & (1 << BitsUsage.mod.rawValue) != 0 {
             if mod == 0b11 {
                 instruction.operands[modOperandIndex] = getRegOperand(
@@ -278,6 +280,9 @@ struct InstructionDecoder {
         if instruction.operands[0].type != .none {
             lastOperandIndex = 1
         }
+        if instruction.operands[1].type != .none {
+            lastOperandIndex = 2
+        }
 
         if bits[Int(BitsUsage.relJMPDisp.rawValue)] != 0 {
             instruction.operands[lastOperandIndex].type = .relativeImmediate
@@ -291,6 +296,5 @@ struct InstructionDecoder {
         }
 
         return instruction
-
     }
 }

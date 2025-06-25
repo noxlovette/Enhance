@@ -7,10 +7,15 @@
 func disAsm8086(memory: Memory, disAsmByteCount: u32) {
     let disAsmStart = SegmentedAccess(segmentBase: 0, segmentOffset: 0)
     var at = disAsmStart
-    var context = DisasmContext()  // Using init()
+    var context = DisasmContext()
     var remainingBytes = disAsmByteCount
 
+    
     while remainingBytes > 0 {
+        let currentOffset = at.segmentOffset
+        let currentByte = memory.readByte(at: getAbsoluteAddress(of: at))
+        
+        
         var instruction = InstructionDecoder.decodeInstruction(
             context: &context,
             memory: memory,
@@ -18,10 +23,10 @@ func disAsm8086(memory: Memory, disAsmByteCount: u32) {
         )
 
         if instruction.op != .none {
+            
             if remainingBytes >= instruction.size {
                 remainingBytes -= instruction.size
             } else {
-                print("ERROR: Instruction extends outside disassembly region")
                 break
             }
 
@@ -37,11 +42,9 @@ func disAsm8086(memory: Memory, disAsmByteCount: u32) {
                 print()
             }
 
-            // Advance the instruction pointer
-            at = advanceSegmentedAddress(at, by: instruction.size)
         } else {
-            print("ERROR: Unrecognised binary in instruction stream.")
             break
         }
     }
+    
 }

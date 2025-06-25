@@ -62,5 +62,4 @@ func printInstruction(_ instruction: inout Instruction) {
             }
         }
     }
-    print()  // newline at the end
 }
