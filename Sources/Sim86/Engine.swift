@@ -108,6 +108,7 @@ func executeInstruction(_ instruction: inout Instruction, _ cpuState: inout CPUS
                 }
                 
                 let result = destValue + srcValue
+                cpuState.updateFlags(result: result, operandSize: dest.register.count)
                 // Handle overflow based on register size
                 let maskedResult = dest.register.count == 2 ? (result & 0xFFFF) : (result & 0xFF)
                 cpuState.setValue(maskedResult, for: dest.register)
@@ -136,6 +137,11 @@ func executeInstruction(_ instruction: inout Instruction, _ cpuState: inout CPUS
                 }
                 
                 let result = destValue &- srcValue // Use overflow subtraction
+                cpuState
+                    .updateFlags(
+                        result: result,
+                        operandSize: dest.register.count
+                    )
                 let maskedResult = dest.register.count == 2 ? (result & 0xFFFF) : (result & 0xFF)
                 cpuState.setValue(maskedResult, for: dest.register)
                 stateChanged = true
@@ -143,9 +149,32 @@ func executeInstruction(_ instruction: inout Instruction, _ cpuState: inout CPUS
         }
         
     case .cmp:
-        // CMP doesn't change registers, only flags (which we're not fully implementing)
-        stateChanged = false
-        
+        if instruction.operands.count >= 2 {
+            let left = instruction.operands[0]
+            let right = instruction.operands[1]
+
+            if left.type == .register {
+                let leftValue = cpuState.getValue(for: left.register)
+                var rightValue: u32 = 0
+
+                switch right.type {
+                case .register:
+                    rightValue = cpuState.getValue(for: right.register)
+                case .immediate:
+                    rightValue = right.immediateU32
+                case .memory:
+                    rightValue = 0 // Simplified
+                default:
+                    break
+                }
+
+                // CMP is like SUB but doesn't store result - just sets flags
+                let result = leftValue &- rightValue
+                cpuState.updateFlags(result: result, operandSize: left.register.count)
+                stateChanged = true // Flags changed even though register didn't
+            }
+        }
+
     default:
         // For other instructions, we don't simulate execution yet
         stateChanged = false

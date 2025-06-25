@@ -172,7 +172,38 @@ struct CPUState {
             break
         }
     }
-    
+
+    mutating func updateFlags(result: u32, operandSize: u8) {
+        let mask: u32 = operandSize == 2 ? 0xFFFF : 0xFF
+        let signBit: u32 = operandSize == 2 ? 0x8000 : 0x80
+        let maskedResult = result & mask
+
+        // Clear flags we're updating
+        flags &= ~0x08C5  // Clear CF, PF, ZF, SF, OF (bits 0,2,6,7,11)
+
+        // Zero Flag
+        if maskedResult == 0 {
+            flags |= 0x0040  // Set ZF (bit 6)
+        }
+
+        // Sign Flag
+        if maskedResult & signBit != 0 {
+            flags |= 0x0080  // Set SF (bit 7)
+        }
+
+        // Carry Flag
+        if result > mask {
+            flags |= 0x0001  // Set CF (bit 0)
+        }
+
+        // Parity Flag (even number of 1-bits in low byte)
+        let lowByte = UInt8(maskedResult & 0xFF)
+        if lowByte.nonzeroBitCount % 2 == 0 {
+            flags |= 0x0004  // Set PF (bit 2)
+        }
+    }
+
+
     // Print current register state
     func printState() {
         print("      ax: 0x\(String(format: "%04x", ax)) (\(ax))")
@@ -186,4 +217,46 @@ struct CPUState {
         print("      ip: 0x\(String(format: "%04x", ip)) (\(ip))")
         print("   flags: 0x\(String(format: "%04x", flags))")
     }
+
+    func printFlags() {
+        print("flags: 0x\(String(format: "%04x", flags)) (\(CPUFlags.decodeFlags(flags)))")
+    }
 }
+
+// Enhanced flag structure with iteration support
+
+struct CPUFlags: OptionSet {
+    let rawValue: u16
+
+    // 8086 flags with their bit positions
+    static let carry     = CPUFlags(rawValue: 1 << 0)   // CF
+    static let parity    = CPUFlags(rawValue: 1 << 2)   // PF
+    static let auxiliary = CPUFlags(rawValue: 1 << 4)   // AF
+    static let zero      = CPUFlags(rawValue: 1 << 6)   // ZF
+    static let sign      = CPUFlags(rawValue: 1 << 7)   // SF
+    static let trap      = CPUFlags(rawValue: 1 << 8)   // TF
+    static let interrupt = CPUFlags(rawValue: 1 << 9)   // IF
+    static let direction = CPUFlags(rawValue: 1 << 10)  // DF
+    static let overflow  = CPUFlags(rawValue: 1 << 11)  // OF
+
+    // All flags in order for iteration
+    static let allFlags: [(CPUFlags, String)] = [
+        (.carry, "CF"),
+        (.parity, "PF"),
+        (.auxiliary, "AF"),
+        (.zero, "ZF"),
+        (.sign, "SF"),
+        (.trap, "TF"),
+        (.interrupt, "IF"),
+        (.direction, "DF"),
+        (.overflow, "OF")
+    ]
+
+    static func decodeFlags(_ value: u16) -> String {
+        let flags = CPUFlags(rawValue: value)
+        let setFlags = CPUFlags.allFlags.compactMap { flag, name in
+            flags.contains(flag) ? name : nil
+        }
+        return setFlags.isEmpty ? "none" : setFlags.joined(separator: ", ")
+    }
+   }

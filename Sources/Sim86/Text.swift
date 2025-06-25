@@ -112,6 +112,7 @@ func printInstructionWithExecution(_ instruction: inout Instruction, cpuState: i
                     } else {
                         print("\(dest.register.getName()): 0x\(String(format: "%02x", oldValue)) -> 0x\(String(format: "%02x", newValue)) (\(oldValue) -> \(newValue))", terminator: "")
                     }
+                    cpuState.printFlags()
                 }
             }
 
@@ -140,7 +141,32 @@ func printInstructionWithExecution(_ instruction: inout Instruction, cpuState: i
                     } else {
                         print("\(dest.register.getName()): 0x\(String(format: "%02x", oldValue)) -> 0x\(String(format: "%02x", newValue)) (\(oldValue) -> \(newValue))", terminator: "")
                     }
+                    cpuState.printFlags()
                 }
+            }
+        case .cmp:
+            if instruction.operands.count >= 2 {
+                let left = instruction.operands[0]
+                let right = instruction.operands[1]
+
+                if left.type == .register {
+                    let leftValue = cpuState.getValue(for: left.register)
+                    var rightValue: u32 = 0
+                    switch right.type {
+                    case .register:
+                        rightValue = cpuState.getValue(for: right.register)
+                    case .immediate:
+                        rightValue = right.immediateU32
+                    case .memory:
+                        rightValue = 0
+                    default:
+                        break
+
+                    }
+                    let result = leftValue &- rightValue
+                    cpuState.updateFlags(result: result, operandSize: left.register.count)
+                    }
+
             }
 
         default:
