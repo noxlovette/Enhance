@@ -12,7 +12,7 @@ struct App {
 
                 print("Disassembly \(argument)\n")
                 print("16 bits\n")
-                disAsm8086(memory, bytesRead)
+                disAsm8086(memory: memory, disAsmByteCount: bytesRead)
             }
         } else {
             print("USAGE: [8086 machine code file]... \n")

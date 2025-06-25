@@ -143,7 +143,7 @@ struct InstructionDecoder {
     static func decodeInstruction(
         context: inout DisasmContext, memory: Memory, at: inout SegmentedAccess
     ) -> Instruction {
-        var result: Instruction
+        var result = Instruction()
 
         for format in instructionFormats {
             if let instruction = tryDecode(
@@ -161,8 +161,8 @@ struct InstructionDecoder {
         context: inout DisasmContext, format: InstructionFormat, memory: Memory,
         at originalAt: SegmentedAccess
     ) -> Instruction? {
-        var instruction: Instruction
-        var hasBits: u32
+        var instruction = Instruction()
+        var hasBits: u32 = 0
         var bits = Array(repeating: u32(0), count: Int(BitsUsage.count.rawValue))
         var valid = true
         var at = originalAt
@@ -232,7 +232,9 @@ struct InstructionDecoder {
             wide: dataIsW, signExtended: s)
 
         instruction.op = format.op
-        instruction.flags = InstructionFlag(rawValue: context.additionalFlags)
+        instruction.flags = InstructionFlag(
+            rawValue: context.additionalFlags.rawValue
+        )
         instruction.address = startingAddress
         instruction.size = getAbsoluteAddress(of: at) - startingAddress
 

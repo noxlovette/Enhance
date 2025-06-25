@@ -4,16 +4,14 @@
 ///   - memory: The 8086 memory model to disassemble from.
 ///   - disAsmByteCount: How many bytes to disassemble starting at the given address.
 ///   - disAsmStart: The segmented memory address to begin disassembly.
-func disAsm8086(
-    _ memory: Memory,
-    _ disAsmByteCount: u32,
-    disAsmStart: SegmentedAccess = SegmentedAccess(segmentBase: 0, segmentOffset: 0)) {
-    var at = disAsmStart  // Current location in memory
-    var context = DisasmContext()
+func disAsm8086(memory: Memory, disAsmByteCount: u32) {
+    let disAsmStart = SegmentedAccess(segmentBase: 0, segmentOffset: 0)
+    var at = disAsmStart
+    var context = DisasmContext()  // Using init()
     var remainingBytes = disAsmByteCount
 
     while remainingBytes > 0 {
-        let instruction = InstructionDecoder.decodeInstruction(
+        var instruction = InstructionDecoder.decodeInstruction(
             context: &context,
             memory: memory,
             at: &at
@@ -27,12 +25,15 @@ func disAsm8086(
                 break
             }
 
-            // Accept instruction and move forward
+            // Update context with this instruction
+            context.update(with: instruction)
             
-            updateContext(&context, instruction)
+            // Apply any pending flags from context to the instruction
+            context.applyFlags(to: &instruction)
 
-            if isPrintable(instruction) {
-                printInstruction(instruction)
+            // Only print non-prefix instructions
+            if instruction.isPrintable {
+                printInstruction(&instruction)
                 print()
             }
 

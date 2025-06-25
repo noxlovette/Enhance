@@ -120,7 +120,6 @@ enum OpCode: UInt32 {
         case .esc: return "esc"
         case .lock: return "lock"
         case .segment: return "segment"
-        case .nop: return "nop"
         }
     }
 }
@@ -319,26 +318,67 @@ struct InstructionFormat {
     }
 }
 
+/// Disassembly context with proper methods
 struct DisasmContext {
-    var defaultSegment: RegisterIndex
-    var additionalFlags: UInt32
+    var additionalFlags: InstructionFlag = []
+    var defaultSegment: RegisterIndex = .ds
     
+    // Initialize with default values
     init() {
+        self.additionalFlags = []
         self.defaultSegment = .ds
-        self.additionalFlags = 0
     }
     
-    // Add an update method
+    // Update context based on instruction
     mutating func update(with instruction: Instruction) {
-        // Update logic based on the instruction
-        // For example:
-        if instruction.hasSegmentOverride {
-            self.defaultSegment = instruction.segmentOverride
+        switch instruction.op {
+        case .lock:
+            // Lock prefix - affects the next instruction
+            additionalFlags.insert(.lock)
+            
+        case .rep:
+            // Repeat prefix - affects string instructions
+            additionalFlags.insert(.rep)
+            
+        case .segment:
+            // Segment override prefix - changes default segment for memory access
+            additionalFlags.insert(.segment)
+            // The segment register should be in operands[1] based on the C code
+            if instruction.operands.count > 1 {
+                defaultSegment = instruction.operands[1].register.index
+            }
+            
+        default:
+            // For any actual instruction (not a prefix), clear the context
+            // The prefixes have been "consumed" by this instruction
+            reset()
         }
+    }
+    
+    // Apply accumulated flags to an instruction
+    func applyFlags(to instruction: inout Instruction) {
+        instruction.flags.formUnion(additionalFlags)
         
-        if instruction.hasAdditionalFlags {
-            self.additionalFlags |= instruction.flags
+        // Apply segment override if needed
+        if additionalFlags.contains(.segment) {
+            // Apply default segment to memory operands
+            for i in 0..<instruction.operands.count {
+                if instruction.operands[i].type == .memory {
+                    instruction.operands[i].address.segment = defaultSegment
+                }
+            }
         }
+    }
+    
+    // Reset context to defaults
+    private mutating func reset() {
+        additionalFlags = []
+        defaultSegment = .ds
+    }
+    
+    // Check if context has pending flags
+    var hasPendingFlags: Bool {
+        return !additionalFlags.isEmpty
     }
 }
 
@@ -361,6 +401,12 @@ struct EffectiveAddressExpression {
     func getExpression() -> String {
         return base.expression
     }
+    
+    init() {
+        self.segment = .none
+        self.base = .direct
+        self.displacement = 0
+    }
 }
 
 /// reg field 0b11
@@ -376,9 +422,15 @@ struct RegisterAccess {
     }
 
     init() {
-        self.index: RegisterAccess(.none)
-        self.offset: 0
-        self.count: 0
+        self.index = .none
+        self.offset = 0
+        self.count = 0
+    }
+    
+    init(index: RegisterIndex, offset: u8, count: u8) {
+        self.index = index
+        self.count = count
+        self.offset = offset
     }
 }
 
@@ -394,12 +446,9 @@ struct InstructionOperand {
     init(type: OperandType) {
         self.type = type
         self.register = RegisterAccess()
-        self.address = EffectiveAddress(
-            segment: RegisterAccess(),
-            base: RegisterAccess(),
-            displacement: 0
-        )
+        self.address = EffectiveAddressExpression()
         self.immediateS32 = 0
+        self.immediateU32 = 0
     }
 }
 
@@ -412,4 +461,21 @@ struct Instruction {
     var flags: InstructionFlag
 
     var operands: [InstructionOperand]
+    
+    init() {
+        self.address = 0
+        self.size = 0
+        self.op = .none
+        self.flags = []
+        self.operands = []
+    }
+    
+    var isPrintable: Bool {
+        switch self.op {
+        case .lock, .rep, .segment:
+            return false
+        default:
+            return true
+        }
+    }
 }
