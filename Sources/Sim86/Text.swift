@@ -44,17 +44,17 @@ func printInstruction(_ instruction: inout Instruction) {
                 }
                 print("[\(address.base.expression)", terminator: "")
                 if address.displacement != 0 {
-                    let sign = address.displacement >= 0 ? "+" : ""
+                    let sign = address.displacement >= 0 ? " + " : ""
                     print("\(sign)\(address.displacement)", terminator: "")
                 }
                 print("]", terminator: "")
 
             case .immediate:
-                print("\(operand.immediateS32)", terminator: "")
+                print("\(operand.immediateU32)", terminator: "")
 
             case .relativeImmediate:
                 print(
-                    "$\(operand.immediateS32 >= 0 ? "+" : "")\(operand.immediateS32)",
+                    "$\(operand.immediateS32 >= 0 ? " + " : "")\(operand.immediateS32)",
                     terminator: "")
 
             case .none:

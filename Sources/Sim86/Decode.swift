@@ -47,6 +47,30 @@ struct InstructionDecoder {
         InstructionFormat(.pop, [B(0b01011, bitCount: 5), .reg, .impW(1)]),
         InstructionFormat(.pop, [B(0b000, bitCount: 3), .sr, B(0b111, bitCount: 3), .impW(1)]),
         
+        // XCHG instructions
+        InstructionFormat(.xchg, [B(0b1000011, bitCount: 7), .w, .mod, .reg, .rm]),
+        InstructionFormat(.xchg, [B(0b10010, bitCount: 5), .reg, .impW(1), .impREG(0)]), // with AX
+        
+        // IN/OUT instructions
+        InstructionFormat(.`in`, [B(0b1110010, bitCount: 7), .w, .data, .impREG(0)]),
+        InstructionFormat(.`in`, [B(0b1110110, bitCount: 7), .w, .impREG(0), .impREG(2)]), // from DX
+        InstructionFormat(.out, [B(0b1110011, bitCount: 7), .w, .data, .impREG(0)]),
+        InstructionFormat(.out, [B(0b1110111, bitCount: 7), .w, .impREG(2), .impREG(0)]), // to DX
+        
+        // String operations
+        InstructionFormat(.xlat, [B(0b11010111, bitCount: 8)]),
+        
+        // LEA, LDS, LES
+        InstructionFormat(.lea, [B(0b10001101, bitCount: 8), .mod, .reg, .rm, .impW(1)]),
+        InstructionFormat(.lds, [B(0b11000101, bitCount: 8), .mod, .reg, .rm, .impW(1)]),
+        InstructionFormat(.les, [B(0b11000100, bitCount: 8), .mod, .reg, .rm, .impW(1)]),
+        
+        // Flag operations
+        InstructionFormat(.lahf, [B(0b10011111, bitCount: 8)]),
+        InstructionFormat(.sahf, [B(0b10011110, bitCount: 8)]),
+        InstructionFormat(.pushf, [B(0b10011100, bitCount: 8)]),
+        InstructionFormat(.popf, [B(0b10011101, bitCount: 8)]),
+        
         // ADD instructions
         InstructionFormat(.add, [B(0b000000, bitCount: 6), .d, .w, .mod, .reg, .rm]),
         InstructionFormat(
@@ -54,6 +78,22 @@ struct InstructionDecoder {
             [B(0b100000, bitCount: 6), .s, .w, .mod, B(0b000, bitCount: 3), .rm, .data, .dataIfW]),
         InstructionFormat(
             .add, [B(0b0000010, bitCount: 7), .w, .data, .dataIfW, .impREG(0), .impD(1)]),
+        
+        // ADC instructions
+        InstructionFormat(.adc, [B(0b000100, bitCount: 6), .d, .w, .mod, .reg, .rm]),
+        InstructionFormat(
+            .adc,
+            [B(0b100000, bitCount: 6), .s, .w, .mod, B(0b010, bitCount: 3), .rm, .data, .dataIfW]),
+        InstructionFormat(
+            .adc, [B(0b0001010, bitCount: 7), .w, .data, .dataIfW, .impREG(0), .impD(1)]),
+        
+        // INC instructions
+        InstructionFormat(.inc, [B(0b1111111, bitCount: 7), .w, .mod, B(0b000, bitCount: 3), .rm]),
+        InstructionFormat(.inc, [B(0b01000, bitCount: 5), .reg, .impW(1)]),
+        
+        // AAA, DAA
+        InstructionFormat(.aaa, [B(0b00110111, bitCount: 8)]),
+        InstructionFormat(.daa, [B(0b00100111, bitCount: 8)]),
         
         // SUB instructions
         InstructionFormat(.sub, [B(0b001010, bitCount: 6), .d, .w, .mod, .reg, .rm]),
@@ -63,6 +103,21 @@ struct InstructionDecoder {
         InstructionFormat(
             .sub, [B(0b0010110, bitCount: 7), .w, .data, .dataIfW, .impREG(0), .impD(1)]),
         
+        // SBB instructions
+        InstructionFormat(.sbb, [B(0b000110, bitCount: 6), .d, .w, .mod, .reg, .rm]),
+        InstructionFormat(
+            .sbb,
+            [B(0b100000, bitCount: 6), .s, .w, .mod, B(0b011, bitCount: 3), .rm, .data, .dataIfW]),
+        InstructionFormat(
+            .sbb, [B(0b0001110, bitCount: 7), .w, .data, .dataIfW, .impREG(0), .impD(1)]),
+        
+        // DEC instructions
+        InstructionFormat(.dec, [B(0b1111111, bitCount: 7), .w, .mod, B(0b001, bitCount: 3), .rm]),
+        InstructionFormat(.dec, [B(0b01001, bitCount: 5), .reg, .impW(1)]),
+        
+        // NEG instruction
+        InstructionFormat(.neg, [B(0b1111011, bitCount: 7), .w, .mod, B(0b011, bitCount: 3), .rm]),
+        
         // CMP instructions
         InstructionFormat(.cmp, [B(0b001110, bitCount: 6), .d, .w, .mod, .reg, .rm]),
         InstructionFormat(
@@ -71,9 +126,86 @@ struct InstructionDecoder {
         InstructionFormat(
             .cmp, [B(0b0011110, bitCount: 7), .w, .data, .dataIfW, .impREG(0), .impD(1)]),
         
-        // Jump instructions
+        // AAS, DAS
+        InstructionFormat(.aas, [B(0b00111111, bitCount: 8)]),
+        InstructionFormat(.das, [B(0b00101111, bitCount: 8)]),
+        
+        // MUL instructions
+        InstructionFormat(.mul, [B(0b1111011, bitCount: 7), .w, .mod, B(0b100, bitCount: 3), .rm]),
+        
+        // IMUL instructions
+        InstructionFormat(.imul, [B(0b1111011, bitCount: 7), .w, .mod, B(0b101, bitCount: 3), .rm]),
+        
+        // AAM, AAD
+        InstructionFormat(.aam, [B(0b1101010000001010, bitCount: 16)]),
+        InstructionFormat(.aad, [B(0b1101010100001010, bitCount: 16)]),
+        
+        // DIV instructions
+        InstructionFormat(.div, [B(0b1111011, bitCount: 7), .w, .mod, B(0b110, bitCount: 3), .rm]),
+        
+        // IDIV instructions
+        InstructionFormat(.idiv, [B(0b1111011, bitCount: 7), .w, .mod, B(0b111, bitCount: 3), .rm]),
+        
+        // CBW, CWD
+        InstructionFormat(.cbw, [B(0b10011000, bitCount: 8)]),
+        InstructionFormat(.cwd, [B(0b10011001, bitCount: 8)]),
+        
+        // NOT instruction
+        InstructionFormat(.not, [B(0b1111011, bitCount: 7), .w, .mod, B(0b010, bitCount: 3), .rm]),
+        
+        // Shift/Rotate instructions
+        InstructionFormat(.shl, [B(0b1101000, bitCount: 7), .w, .mod, B(0b100, bitCount: 3), .rm, .impD(1)]),
+        InstructionFormat(.shl, [B(0b1101001, bitCount: 7), .w, .mod, B(0b100, bitCount: 3), .rm, .impREG(1)]),
+        InstructionFormat(.shr, [B(0b1101000, bitCount: 7), .w, .mod, B(0b101, bitCount: 3), .rm, .impD(1)]),
+        InstructionFormat(.shr, [B(0b1101001, bitCount: 7), .w, .mod, B(0b101, bitCount: 3), .rm, .impREG(1)]),
+        InstructionFormat(.sar, [B(0b1101000, bitCount: 7), .w, .mod, B(0b111, bitCount: 3), .rm, .impD(1)]),
+        InstructionFormat(.sar, [B(0b1101001, bitCount: 7), .w, .mod, B(0b111, bitCount: 3), .rm, .impREG(1)]),
+        InstructionFormat(.rol, [B(0b1101000, bitCount: 7), .w, .mod, B(0b000, bitCount: 3), .rm, .impD(1)]),
+        InstructionFormat(.rol, [B(0b1101001, bitCount: 7), .w, .mod, B(0b000, bitCount: 3), .rm, .impREG(1)]),
+        InstructionFormat(.ror, [B(0b1101000, bitCount: 7), .w, .mod, B(0b001, bitCount: 3), .rm, .impD(1)]),
+        InstructionFormat(.ror, [B(0b1101001, bitCount: 7), .w, .mod, B(0b001, bitCount: 3), .rm, .impREG(1)]),
+        InstructionFormat(.rcl, [B(0b1101000, bitCount: 7), .w, .mod, B(0b010, bitCount: 3), .rm, .impD(1)]),
+        InstructionFormat(.rcl, [B(0b1101001, bitCount: 7), .w, .mod, B(0b010, bitCount: 3), .rm, .impREG(1)]),
+        InstructionFormat(.rcr, [B(0b1101000, bitCount: 7), .w, .mod, B(0b011, bitCount: 3), .rm, .impD(1)]),
+        InstructionFormat(.rcr, [B(0b1101001, bitCount: 7), .w, .mod, B(0b011, bitCount: 3), .rm, .impREG(1)]),
+        
+        // Logical operations
+        InstructionFormat(.and, [B(0b001000, bitCount: 6), .d, .w, .mod, .reg, .rm]),
+        InstructionFormat(.and, [B(0b100000, bitCount: 6), .s, .w, .mod, B(0b100, bitCount: 3), .rm, .data, .dataIfW]),
+        InstructionFormat(.and, [B(0b0010010, bitCount: 7), .w, .data, .dataIfW, .impREG(0), .impD(1)]),
+        
+        InstructionFormat(.test, [B(0b1000010, bitCount: 7), .w, .mod, .reg, .rm]),
+        InstructionFormat(.test, [B(0b1111011, bitCount: 7), .w, .mod, B(0b000, bitCount: 3), .rm, .data, .dataIfW]),
+        InstructionFormat(.test, [B(0b1010100, bitCount: 7), .w, .data, .dataIfW, .impREG(0)]),
+        
+        InstructionFormat(.or, [B(0b000010, bitCount: 6), .d, .w, .mod, .reg, .rm]),
+        InstructionFormat(.or, [B(0b100000, bitCount: 6), .s, .w, .mod, B(0b001, bitCount: 3), .rm, .data, .dataIfW]),
+        InstructionFormat(.or, [B(0b0000110, bitCount: 7), .w, .data, .dataIfW, .impREG(0), .impD(1)]),
+        
+        InstructionFormat(.xor, [B(0b001100, bitCount: 6), .d, .w, .mod, .reg, .rm]),
+        InstructionFormat(.xor, [B(0b100000, bitCount: 6), .s, .w, .mod, B(0b110, bitCount: 3), .rm, .data, .dataIfW]),
+        InstructionFormat(.xor, [B(0b0011010, bitCount: 7), .w, .data, .dataIfW, .impREG(0), .impD(1)]),
+        
+        // String operations with REP
+        InstructionFormat(.rep, [B(0b11110011, bitCount: 8)]), // REP prefix
+        InstructionFormat(.movs, [B(0b1010010, bitCount: 7), .w]),
+        InstructionFormat(.cmps, [B(0b1010011, bitCount: 7), .w]),
+        InstructionFormat(.scas, [B(0b1010111, bitCount: 7), .w]),
+        InstructionFormat(.lods, [B(0b1010110, bitCount: 7), .w]),
+        InstructionFormat(.stos, [B(0b1010101, bitCount: 7), .w]),
+        
+        // Control transfer
+        InstructionFormat(.call, [B(0b11101000, bitCount: 8)] + InstructionBits.addr),
+        InstructionFormat(.call, [B(0b11111111, bitCount: 8), .mod, B(0b010, bitCount: 3), .rm, .impW(1)]),
+        InstructionFormat(.call, [B(0b01010, bitCount: 5), .reg, .impW(1)]),
+        
         InstructionFormat(.jmp, [B(0b11101001, bitCount: 8)] + InstructionBits.addr),
         InstructionFormat(.jmp, [B(0b11101011, bitCount: 8), .disp]),
+        InstructionFormat(.jmp, [B(0b11111111, bitCount: 8), .mod, B(0b100, bitCount: 3), .rm, .impW(1)]),
+        InstructionFormat(.jmp, [B(0b01000, bitCount: 5), .reg, .impW(1)]),
+        
+        InstructionFormat(.ret, [B(0b11000011, bitCount: 8)]),
+        InstructionFormat(.ret, [B(0b11000010, bitCount: 8), .data]),
         
         // Conditional jumps
         InstructionFormat(.je, [B(0b01110100, bitCount: 8), .disp, .flags(.relJMPDisp)]),
@@ -81,17 +213,44 @@ struct InstructionDecoder {
         InstructionFormat(.jle, [B(0b01111110, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.jb, [B(0b01110010, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.jbe, [B(0b01110110, bitCount: 8), .disp, .flags(.relJMPDisp)]),
+        InstructionFormat(.jp, [B(0b01111010, bitCount: 8), .disp, .flags(.relJMPDisp)]),
+        InstructionFormat(.jo, [B(0b01110000, bitCount: 8), .disp, .flags(.relJMPDisp)]),
+        InstructionFormat(.js, [B(0b01111000, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.jne, [B(0b01110101, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.jnl, [B(0b01111101, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.jg, [B(0b01111111, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.jnb, [B(0b01110011, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.ja, [B(0b01110111, bitCount: 8), .disp, .flags(.relJMPDisp)]),
+        InstructionFormat(.jnp, [B(0b01111011, bitCount: 8), .disp, .flags(.relJMPDisp)]),
+        InstructionFormat(.jno, [B(0b01110001, bitCount: 8), .disp, .flags(.relJMPDisp)]),
+        InstructionFormat(.jns, [B(0b01111001, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         
         // Loop instructions
         InstructionFormat(.loop, [B(0b11100010, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.loopz, [B(0b11100001, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.loopnz, [B(0b11100000, bitCount: 8), .disp, .flags(.relJMPDisp)]),
         InstructionFormat(.jcxz, [B(0b11100011, bitCount: 8), .disp, .flags(.relJMPDisp)]),
+        
+        // Interrupt instructions
+        InstructionFormat(.int, [B(0b11001101, bitCount: 8), .data]),
+        InstructionFormat(.int3, [B(0b11001100, bitCount: 8)]),
+        InstructionFormat(.into, [B(0b11001110, bitCount: 8)]),
+        InstructionFormat(.iret, [B(0b11001111, bitCount: 8)]),
+        
+        // Flag control
+        InstructionFormat(.clc, [B(0b11111000, bitCount: 8)]),
+        InstructionFormat(.cmc, [B(0b11110101, bitCount: 8)]),
+        InstructionFormat(.stc, [B(0b11111001, bitCount: 8)]),
+        InstructionFormat(.cld, [B(0b11111100, bitCount: 8)]),
+        InstructionFormat(.std, [B(0b11111101, bitCount: 8)]),
+        InstructionFormat(.cli, [B(0b11111010, bitCount: 8)]),
+        InstructionFormat(.sti, [B(0b11111011, bitCount: 8)]),
+        InstructionFormat(.hlt, [B(0b11110100, bitCount: 8)]),
+        InstructionFormat(.wait, [B(0b10011011, bitCount: 8)]),
+        
+        // Prefixes
+        InstructionFormat(.lock, [B(0b11110000, bitCount: 8)]),
+        InstructionFormat(.segment, [B(0b001, bitCount: 3), .sr, B(0b110, bitCount: 3)]), // Segment override
     ]
     
     // Register mapping table
@@ -105,13 +264,30 @@ struct InstructionDecoder {
         [(.d, 1, 1), (.si, 0, 2)],
         [(.b, 1, 1), (.di, 0, 2)],
     ]
-    // convert intel's REG and RM field register encodings into ours
+    
+    /// Segment register table
+    private static let segmentRegTable: [RegisterIndex] = [
+        .es, .cs, .ss, .ds
+    ]
+    
+    /// convert intel's REG and RM field register encodings into ours
     private static func getRegOperand(intelRegIndex: UInt32, wide: Bool) -> InstructionOperand {
         var operand = InstructionOperand(type: .none)
         operand.type = .register
         
         let reg = regTable[Int(intelRegIndex & 0x7)][wide ? 1 : 0]
         operand.register = RegisterAccess(index: reg.0, offset: reg.1, count: reg.2)
+        
+        return operand
+    }
+    
+    /// Get segment register operand
+    private static func getSegmentRegOperand(segmentRegIndex: UInt32) -> InstructionOperand {
+        var operand = InstructionOperand(type: .none)
+        operand.type = .register
+        
+        let segReg = segmentRegTable[Int(segmentRegIndex & 0x3)]
+        operand.register = RegisterAccess(index: segReg, offset: 0, count: 2)
         
         return operand
     }
@@ -124,14 +300,20 @@ struct InstructionDecoder {
         if exists {
             if wide {
                 let d0 = memory.readByte(at: getAbsoluteAddress(of: access))
+                access.segmentOffset += 1
                 let d1 = memory.readByte(at: getAbsoluteAddress(of: access))
+                access.segmentOffset += 1
                 result = (u32(d1) << 8) | u32(d0)
             } else {
                 result = u32(memory.readByte(at: getAbsoluteAddress(of: access)))
-                if signExtended {
-                    result = u32(Int32(Int8(bitPattern: u8(result))))
-                }
                 access.segmentOffset += 1
+                
+                if signExtended {
+                    // Properly handle sign extension using bitPattern
+                    let signedByte = Int8(bitPattern: u8(result))
+                    let signedExtended = Int32(signedByte)
+                    result = u32(bitPattern: signedExtended)
+                }
             }
         }
 
@@ -226,10 +408,12 @@ struct InstructionDecoder {
             (bits[Int(BitsUsage.dispAlwaysW.rawValue)] != 0) || (mod == 0b10) || hasDirectAddress
         let dataIsW = (bits[Int(BitsUsage.wMakesDataW.rawValue)] != 0) && !s && (w != 0)
 
-        bits[Int(BitsUsage.disp.rawValue)] |= parseDataValue(
+        // Parse displacement and data separately, don't use |= to accumulate
+        let dispValue = parseDataValue(
             memory: memory, access: &at, exists: hasDisplacement, wide: displacementIsW,
             signExtended: !displacementIsW)
-        bits[Int(BitsUsage.data.rawValue)] |= parseDataValue(
+        
+        let dataValue = parseDataValue(
             memory: memory, access: &at, exists: bits[Int(BitsUsage.hasData.rawValue)] != 0,
             wide: dataIsW, signExtended: s)
 
@@ -244,7 +428,8 @@ struct InstructionDecoder {
             instruction.flags.insert(.wide)  // Inst_Wide flag
         }
 
-        let displacement = Int16(bitPattern: UInt16(bits[Int(BitsUsage.disp.rawValue)]))
+        // Use the parsed displacement value directly, ensuring it fits in Int16
+        let displacement = Int16(bitPattern: UInt16(dispValue & 0xFFFF))
 
         let regOperandIndex = d ? 0 : 1
         let modOperandIndex = d ? 1 : 0
@@ -292,7 +477,7 @@ struct InstructionDecoder {
 
         if bits[Int(BitsUsage.hasData.rawValue)] != 0 {
             instruction.operands[lastOperandIndex].type = .immediate
-            instruction.operands[lastOperandIndex].immediateU32 = bits[Int(BitsUsage.data.rawValue)]
+            instruction.operands[lastOperandIndex].immediateU32 = dataValue
         }
 
         return instruction
