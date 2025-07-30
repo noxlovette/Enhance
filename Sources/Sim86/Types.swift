@@ -175,7 +175,7 @@ enum RegisterIndex {
     // Segment registers
     case es, cs, ss, ds
 
-    // Special registers. Useless in this version
+    // Special registers
     case ip, flags
 
     // this method will create a string based on access values!

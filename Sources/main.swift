@@ -35,7 +35,7 @@ struct App {
             if !shouldExecute {
                 disAsm8086(memory: memory, disAsmByteCount: bytesRead)
             } else {
-                executeWithSimulation(memory: memory, disAsmByteCount: bytesRead)
+                execAsm8086(memory: memory, disAsmByteCount: bytesRead)
             }
         }
         
